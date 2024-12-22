@@ -143,7 +143,6 @@ func (ba *BankAccountWrapper) WithdrawAll(log Log) (decimal.Decimal, error) {
 
 	bank.ChangeAssetShares(totalAssetShares.Mul(decimal.NewFromInt(-1)), false)
 
-	// 检查银行是否满足流动性要求
 	if err := bank.CheckUtilizationRatio(); err != nil {
 		return decimal.Zero, err
 	}
@@ -154,59 +153,47 @@ func (ba *BankAccountWrapper) WithdrawAll(log Log) (decimal.Decimal, error) {
 	return splWithdrawAmount, nil
 }
 
-// RepayAll 还清所有负债
 func (ba *BankAccountWrapper) RepayAll(log Log) (decimal.Decimal, error) {
-	// 领取当前时间的奖励
 	currentTimestamp := ba.clk.Now().Unix()
 	ba.ClaimEmissions(log, currentTimestamp)
 
 	balance := ba.Balance
 	bank := ba.Bank
 
-	// 确保银行处于非操作模式
 	if err := bank.AssertOperationalMode(false); err != nil {
 		return decimal.Zero, err
 	}
 
-	// 获取账户的总资产和总负债
 	totalAssetAmount := balance.AssetShares
 	totalLiabilityAmount := balance.LiabilityShares
 
-	// 获取当前的负债金额
 	currentLiabilityAmount, err := bank.GetLiabilityAmount(totalLiabilityAmount)
 	if err != nil {
 		return decimal.Zero, err
 	}
 
-	// 如果当前负债金额小于阈值，返回没有找到负债的错误
 	if !currentLiabilityAmount.GreaterThan(ZERO_AMOUNT_THRESHOLD) {
 		return decimal.Zero, NoLiabilityFound
 	}
 
-	// 获取当前的资产金额
 	currentAssetAmount, err := bank.GetAssetAmount(totalAssetAmount)
 	if err != nil {
 		return decimal.Zero, err
 	}
 
-	// 如果当前资产金额小于阈值，返回没有找到资产的错误
 	if !currentAssetAmount.LessThan(EMPTY_BALANCE_THRESHOLD) {
 		return decimal.Zero, NoAssetFound
 	}
 
-	// 关闭账户余额
 	if err := balance.Close(ba.clk); err != nil {
 		return decimal.Zero, err
 	}
 
-	// 减少银行的负债份额
 	err = bank.ChangeLiabilityShares(totalLiabilityAmount.Mul(decimal.NewFromInt(-1)), false)
 	if err != nil {
 		return decimal.Zero, err
 	}
 
-	// 计算应存入的金额，并更新银行的保险费
-	// 向上取整到5位小数
 	splDepositAmount := currentLiabilityAmount.RoundCeil(5)
 	insuranceFeeIncrease := splDepositAmount.Sub(currentLiabilityAmount)
 	bank.CollectedInsuranceFeesOutstanding = bank.CollectedInsuranceFeesOutstanding.Add(insuranceFeeIncrease)
@@ -220,7 +207,6 @@ func (ba *BankAccountWrapper) RepayAll(log Log) (decimal.Decimal, error) {
 		return decimal.Zero, ErrBankLiquidityDeficit
 	}
 
-	// 返回应存入的金额
 	return splDepositAmount, nil
 }
 
@@ -392,9 +378,7 @@ func (ba *BankAccountWrapper) DecreaseBalanceInternal(log Log, balanceDelta deci
 	return nil
 }
 
-// ClaimEmissions 领取任何未领取的排放量，并将其添加到未结排放量中
 func (ba *BankAccountWrapper) ClaimEmissions(log Log, currentTimestamp int64) error {
-	// 根据账户的资产或负债状态以及银行的排放标志，确定是否有未领取的排放量
 	var balanceAmount decimal.Decimal
 
 	side, err := ba.Balance.GetSide()
@@ -418,48 +402,38 @@ func (ba *BankAccountWrapper) ClaimEmissions(log Log, currentTimestamp int64) er
 		return nil
 	}
 
-	// 确定上次更新的时间，如果上次更新时间小于最小排放开始时间，则使用当前时间
 	lastUpdate := ba.Balance.LastUpdate
 	if lastUpdate < MIN_EMISSIONS_START_TIME {
 		lastUpdate = currentTimestamp
 	}
 
-	// 计算排放周期
 	period := currentTimestamp - lastUpdate
 	if period <= 0 {
 		return nil
 	}
 
-	// 获取银行的排放率
 	emissionsRate := ba.Bank.EmissionsRate
 
-	// 更新账户的最后更新时间
 	ba.Balance.LastUpdate = currentTimestamp
 
-	// 计算排放量
 	emissions, err := CalcEmissions(period, balanceAmount, emissionsRate)
 	if err != nil {
 		return err
 	}
 
-	// 确定实际排放量，不能超过银行剩余的排放量
 	emissionsReal := decimal.Min(emissions, ba.Bank.EmissionsRemaining)
 
-	// 如果计算的排放量超过实际排放量，记录日志
 	if emissions.Cmp(emissionsReal) != 0 {
 		log.Warn().Msgf("Emissions capped: %s (%s calculated) for period %ds", emissionsReal, emissions, period)
 	}
 
-	// 更新账户的未结排放量
 	ba.Balance.EmissionsOutstanding = ba.Balance.EmissionsOutstanding.Add(emissionsReal)
 
-	// 更新银行的剩余排放量
 	ba.Bank.EmissionsRemaining = ba.Bank.EmissionsRemaining.Sub(emissionsReal)
 
 	return nil
 }
 
-// 结算所有未领取的排放量，并返回可以提取的最大金额。
 func (ba *BankAccountWrapper) SettleEmissionsAndGetTransferAmount(log Log) decimal.Decimal {
 	currentTimestamp := ba.clk.Now().Unix()
 	ba.ClaimEmissions(log, currentTimestamp)
@@ -478,7 +452,6 @@ func (ba *BankAccountWrapper) SettleEmissionsAndGetTransferAmount(log Log) decim
 	return emissionsOutstandingFloored
 }
 
-// ------------ SPL helpers
 func (ba *BankAccountWrapper) WithdrawSplTransfer(amount decimal.Decimal, from, to *decimal.Decimal) {
 	ba.Bank.WithdrawSplTransfer(amount, from, to)
 }
@@ -588,7 +561,6 @@ func LoadBankAccountWithPriceFeeds(ctx context.Context, bankAccountService BankA
 	return bankAccounts, nil
 }
 
-// 计算加权资产和负债的值
 func (ba *BankAccountWithPriceFeed) CalcWeightedAssetsAndLiabsValues(requirementType RequirementType) (decimal.Decimal, decimal.Decimal, error) {
 	side, err := ba.Balance.GetSide()
 	if err != nil {
@@ -612,7 +584,6 @@ func (ba *BankAccountWithPriceFeed) CalcWeightedAssetsAndLiabsValues(requirement
 	return decimal.Zero, decimal.Zero, nil
 }
 
-// 计算负债的加权价值
 func (ba *BankAccountWithPriceFeed) CalcWeightedLiabs(requirementType RequirementType) (decimal.Decimal, error) {
 	switch ba.Bank.BankConfig.RiskTier {
 	case Collateral:
@@ -639,7 +610,6 @@ func (ba *BankAccountWithPriceFeed) CalcWeightedLiabs(requirementType Requiremen
 	}
 }
 
-// 计算加权资产
 func (ba *BankAccountWithPriceFeed) CalcWeightedAssets(requirementType RequirementType) (decimal.Decimal, error) {
 	switch ba.Bank.BankConfig.RiskTier {
 	case Collateral:
@@ -681,15 +651,6 @@ func (ba *BankAccountWithPriceFeed) CalcWeightedAssets(requirementType Requireme
 	}
 }
 
-// 判断账户是否为空
 func (ba *BankAccountWithPriceFeed) IsEmpty(side BalanceSide) bool {
 	return ba.Balance.IsEmpty(side)
 }
-
-// func (ba *BankAccountWithPriceFeed) DepositTransfer(amount decimal.Decimal, from, to *decimal.Decimal) {
-// 	ba.Bank.DepositTransfer(amount, from, to)
-// }
-
-// func (ba *BankAccountWithPriceFeed) WithdrawTransfer(amount decimal.Decimal, from, to *decimal.Decimal) {
-// 	ba.Bank.WithdrawTransfer(amount, from, to)
-// }

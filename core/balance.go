@@ -74,7 +74,6 @@ func (b *Balance) Clone() *Balance {
 	}
 }
 
-// 判断账户是否为空
 func (b *Balance) IsEmpty(side BalanceSide) bool {
 	switch side {
 	case BalanceSideAssets:
@@ -86,7 +85,6 @@ func (b *Balance) IsEmpty(side BalanceSide) bool {
 	}
 }
 
-// 改变资产份额
 func (b *Balance) ChangeAssetShares(delta decimal.Decimal) error {
 	assetShares := b.AssetShares
 	assetShares = assetShares.Add(delta)
@@ -97,7 +95,6 @@ func (b *Balance) ChangeAssetShares(delta decimal.Decimal) error {
 	return nil
 }
 
-// 改变负债份额
 func (b *Balance) ChangeLiabilityShares(delta decimal.Decimal) error {
 	liabilityShares := b.LiabilityShares
 	liabilityShares = liabilityShares.Add(delta)
@@ -109,7 +106,6 @@ func (b *Balance) ChangeLiabilityShares(delta decimal.Decimal) error {
 	return nil
 }
 
-// 关闭账户
 func (b *Balance) Close(clk clock.Clock) error {
 	if b.EmissionsOutstanding.GreaterThanOrEqual(EMPTY_BALANCE_THRESHOLD) {
 		return CannotCloseOutstandingEmissions
@@ -122,7 +118,6 @@ func (b *Balance) GetSide() (BalanceSide, error) {
 	assetShares := b.AssetShares
 	liabilityShares := b.LiabilityShares
 
-	// 确保资产份额和负债份额有一个为zero
 	if assetShares.GreaterThan(ZERO_AMOUNT_THRESHOLD) && liabilityShares.GreaterThan(ZERO_AMOUNT_THRESHOLD) {
 		return BalanceSideEmpty, IllegalBalanceState
 	}
@@ -190,18 +185,10 @@ func (b BalanceIncreaseType) String() string {
 
 type BalanceDecreaseType uint8
 
-// 定义 BalanceDecreaseType 类型的常量，用于表示不同的余额减少操作类型
 const (
-	// BalanceDecreaseTypeAny 表示任意类型的余额减少操作
-	BalanceDecreaseTypeAny BalanceDecreaseType = 1 << 0
-
-	// BalanceDecreaseTypeWithdrawOnly 表示仅提款操作
-	BalanceDecreaseTypeWithdrawOnly BalanceDecreaseType = 1 << 1
-
-	// BalanceDecreaseTypeBorrowOnly 表示仅借款操作
-	BalanceDecreaseTypeBorrowOnly BalanceDecreaseType = 1 << 2
-
-	// BalanceDecreaseTypeBypassBorrowLimit 表示绕过借款限制的操作
+	BalanceDecreaseTypeAny               BalanceDecreaseType = 1 << 0
+	BalanceDecreaseTypeWithdrawOnly      BalanceDecreaseType = 1 << 1
+	BalanceDecreaseTypeBorrowOnly        BalanceDecreaseType = 1 << 2
 	BalanceDecreaseTypeBypassBorrowLimit BalanceDecreaseType = 1 << 3
 )
 

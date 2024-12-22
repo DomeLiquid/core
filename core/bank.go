@@ -93,31 +93,21 @@ type (
 	}
 )
 
-// 计算利率
 func (i *InterestRateConfig) CalcInterestRate(utilizationRatio decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
-	// 获取协议和保险的利率费用
 	protocolIrFee := i.ProtocolIrFee
 	insuranceIrFee := i.InsuranceIrFee
-	// 获取协议和保险的固定年利率费用
 	protocolFixedFeeApr := i.ProtocolFixedFeeApr
 	insuranceFeeFixedApr := i.InsuranceFeeFixedApr
 
-	// 计算总的利率费用
 	rateFee := protocolIrFee.Add(insuranceIrFee)
-	// 计算总的固定年利率费用
 	totalFixedFeeApr := protocolFixedFeeApr.Add(insuranceFeeFixedApr)
 
-	// 计算基础利率
 	baseRate := i.InterestRateCurve(utilizationRatio)
 
-	// 计算借贷利率
 	lendingRate := baseRate.Mul(utilizationRatio)
-	// 计算借款利率
 	borrowingRate := baseRate.Mul(ONE.Add(rateFee)).Add(totalFixedFeeApr)
 
-	// 计算组的年利率费用
 	groupFeesApr := i.CalcFeeRate(baseRate, protocolIrFee, protocolFixedFeeApr)
-	// 计算保险的年利率费用
 	insuranceFeesApr := i.CalcFeeRate(baseRate, insuranceIrFee, insuranceFeeFixedApr)
 
 	if lendingRate.LessThan(decimal.Zero) ||
@@ -130,7 +120,6 @@ func (i *InterestRateConfig) CalcInterestRate(utilizationRatio decimal.Decimal) 
 	return lendingRate, borrowingRate, groupFeesApr, insuranceFeesApr, nil
 }
 
-// 计算利率曲线
 func (i *InterestRateConfig) InterestRateCurve(utilizationRatio decimal.Decimal) decimal.Decimal {
 	optimalUr := i.OptimalUtilizationRate
 	plateauIr := i.PlateauInterestRate
@@ -150,12 +139,10 @@ func (i *InterestRateConfig) InterestRateCurve(utilizationRatio decimal.Decimal)
 	}
 }
 
-// 计算费用率
 func (i *InterestRateConfig) CalcFeeRate(baseRate, irFee, fixedFeeApr decimal.Decimal) decimal.Decimal {
 	return baseRate.Mul(irFee).Add(fixedFeeApr)
 }
 
-// 验证利率配置的有效性
 func (i *InterestRateConfig) Validate() error {
 	optimalUr := i.OptimalUtilizationRate
 	plateauIr := i.PlateauInterestRate
@@ -177,7 +164,6 @@ func (i *InterestRateConfig) Validate() error {
 	return nil
 }
 
-// 更新利率配置
 func (i *InterestRateConfig) Update(irConfig *InterestRateConfig) {
 	if !irConfig.OptimalUtilizationRate.IsZero() {
 		i.OptimalUtilizationRate = irConfig.OptimalUtilizationRate
@@ -233,21 +219,15 @@ const (
 	Isolated
 )
 
-// BankFlags 是一个表示银行标志的类型，使用 uint8 类型来存储标志位
 type BankFlags uint8
 
 const (
-	// BankFlagsBorrowActive 表示银行允许借款操作
-	BankFlagsBorrowActive BankFlags = 1 << 0
-	// BankFlagsLendingActive 表示银行允许放贷操作
-	BankFlagsLendingActive BankFlags = 1 << 1
-	// BankFlagsPermissionlessBadDebtSettlement 表示银行允许无权限的坏账结算
+	BankFlagsBorrowActive                    BankFlags = 1 << 0
+	BankFlagsLendingActive                   BankFlags = 1 << 1
 	BankFlagsPermissionlessBadDebtSettlement BankFlags = 1 << 2
 
-	// BankFlagsEmissionsActive 表示银行允许激励代币操作
 	BankFlagsEmissionsActive BankFlags = BankFlagsBorrowActive | BankFlagsLendingActive
-	// BankFlagsGroupActive 表示银行允许组操作
-	BankFlagsGroupActive BankFlags = BankFlagsPermissionlessBadDebtSettlement | BankFlagsEmissionsActive
+	BankFlagsGroupActive     BankFlags = BankFlagsPermissionlessBadDebtSettlement | BankFlagsEmissionsActive
 )
 
 func (bf BankFlags) String() string {
@@ -459,48 +439,37 @@ func (b *Bank) VerifyGroupFlags(flags BankFlags) bool {
 }
 
 func (b *Bank) Configure(config *BankConfig) error {
-	// 更新初始资产权重
 	if !config.AssetWeightInit.IsZero() {
 		b.BankConfig.AssetWeightInit = config.AssetWeightInit
 	}
-	// 更新维护资产权重
 	if !config.AssetWeightMaint.IsZero() {
 		b.BankConfig.AssetWeightMaint = config.AssetWeightMaint
 	}
-	// 更新初始负债权重
 	if !config.LiabilityWeightInit.IsZero() {
 		b.BankConfig.LiabilityWeightInit = config.LiabilityWeightInit
 	}
-	// 更新维护负债权重
 	if !config.LiabilityWeightMaint.IsZero() {
 		b.BankConfig.LiabilityWeightMaint = config.LiabilityWeightMaint
 	}
-	// 更新存款限额
 	if !config.DepositLimit.IsZero() {
 		b.BankConfig.DepositLimit = config.DepositLimit
 	}
-	// 更新借款限额
 	if !config.LiabilityLimit.IsZero() {
 		b.BankConfig.LiabilityLimit = config.LiabilityLimit
 	}
-	// 更新利率配置
 	if config.InterestRateConfig != (InterestRateConfig{}) {
 		b.BankConfig.InterestRateConfig = config.InterestRateConfig
 	}
-	// 更新风险等级
 	if config.RiskTier != 0 {
 		b.BankConfig.RiskTier = config.RiskTier
 	}
-	// 更新初始总资产价值限额
 	if !config.TotalAssetValueInitLimit.IsZero() {
 		b.BankConfig.TotalAssetValueInitLimit = config.TotalAssetValueInitLimit
 	}
-	// 更新预言机最大年龄
 	if config.OracleMaxAge != 0 {
 		b.BankConfig.OracleMaxAge = config.OracleMaxAge
 	}
 
-	// 验证配置的有效性
 	if err := b.BankConfig.Validate(); err != nil {
 		return err
 	}
@@ -525,21 +494,16 @@ func (b *Bank) GetLiabilityShares(value decimal.Decimal) (decimal.Decimal, error
 }
 
 func (b *Bank) ChangeAssetShares(shares decimal.Decimal, bypassDepositLimit bool) error {
-	// 获取当前总资产份额
 	totalAssetShares := b.TotalAssetShares.Add(shares)
 	b.TotalAssetShares = totalAssetShares
 
-	// 如果份额为正且存款限制激活且不绕过存款限制
 	if shares.IsPositive() && b.BankConfig.IsDepositLimitActive() && !bypassDepositLimit {
-		// 获取总存款金额
 		totalDepositsAmount, err := b.GetAssetAmount(totalAssetShares)
 		if err != nil {
 			return err
 		}
-		// 获取存款限制
 		depositLimit := b.BankConfig.DepositLimit
 
-		// 检查总存款金额是否小于存款限制
 		if totalDepositsAmount.GreaterThan(depositLimit) {
 			return BankAssetCapacityExceeded
 		}
@@ -573,14 +537,11 @@ func (b *Bank) MaybeGetAssetWeightInitDiscount(price decimal.Decimal) (decimal.D
 	return decimal.Zero, nil
 }
 
-// 改变负债份额
 func (b *Bank) ChangeLiabilityShares(shares decimal.Decimal, bypassBorrowLimit bool) error {
 	totalLiabilityShares := b.TotalLiabilityShares
 	b.TotalLiabilityShares = totalLiabilityShares.Add(shares)
 
-	// 检查是否绕过借款限制、份额是否为正以及借款限制是否激活
 	if !bypassBorrowLimit && shares.IsPositive() && b.BankConfig.IsBorrowLimitActive() {
-		// 获取当前总负债金额
 		totalLiabilityAmount, err := b.GetLiabilityAmount(b.TotalLiabilityShares)
 		if err != nil {
 			return err
@@ -611,7 +572,6 @@ func (b *Bank) CheckUtilizationRatio() error {
 	return nil
 }
 
-// 计算利息
 func (b *Bank) AccrueInterest(log Log, currentTimestamp int64) error {
 	timeDelta := currentTimestamp - b.LastUpdate
 
