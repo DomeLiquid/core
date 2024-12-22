@@ -322,23 +322,15 @@ func (ba *BankAccountWrapper) DecreaseBalanceInternal(log Log, balanceDelta deci
 	}
 
 	assetAmountDecrease, liabilityAmountIncrease := decimal.Min(currentAssetAmount, balanceDelta), decimal.Max(balanceDelta.Sub(currentAssetAmount), decimal.Zero)
-	// 根据操作类型进行不同的处理
 	switch operationType {
-	// 如果操作类型是仅提款
 	case BalanceDecreaseTypeWithdrawOnly:
-		// 检查负债增加量是否小于空余额阈值
 		if !liabilityAmountIncrease.IsZero() {
-			// 如果是，返回没有找到负债的错误
 			return OperationWithdrawOnly
 		}
-	// 如果操作类型是仅借款
 	case BalanceDecreaseTypeBorrowOnly:
-		// 检查资产减少量是否小于空余额阈值
 		if !assetAmountDecrease.IsZero() {
-			// 如果是，返回没有找到资产的错误
 			return OperationBorrowOnly
 		}
-	// 默认情况下，不做任何处理
 	default:
 	}
 

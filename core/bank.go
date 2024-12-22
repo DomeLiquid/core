@@ -49,7 +49,6 @@ type (
 
 		BankConfig `json:"bankConfig"`
 
-		// 银行配置
 		EmissionsMixinSafeAssetId string          `json:"emissionsMixinSafeAssetId"`
 		EmissionsRate             decimal.Decimal `json:"emissionsRate"`
 		EmissionsRemaining        decimal.Decimal `json:"emissionsRemaining"`

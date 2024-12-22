@@ -95,7 +95,6 @@ func TestCalculatePostFeeSplDepositAmount(t *testing.T) {
 	assert.True(t, result.Equal(amount), "expected %s, got %s", amount, result)
 }
 
-// 辅助函数，用于创建decimal.Decimal指针
 func decimalPtr(d decimal.Decimal) *decimal.Decimal {
 	return &d
 }

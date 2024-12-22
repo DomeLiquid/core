@@ -181,7 +181,6 @@ func (r *RiskEngine) CheckAccountBankrupt(log Log) error {
 		return AccountNotBankrupt
 	}
 
-	// TODO
 	if totalAssets.LessThan(BANKRUPT_THRESHOLD) {
 		return AccountNotBankrupt
 	}
