@@ -8,7 +8,7 @@ import (
 )
 
 type RiskEngine struct {
-	MarginfiAccount       *Account
+	Account               *Account
 	BankAccountsWithPrice []*BankAccountWithPriceFeed
 }
 
@@ -26,7 +26,7 @@ func NewRiskEngineNoFlashloanCheck(ctx context.Context, bankAccountService BankA
 		return nil, err
 	}
 	return &RiskEngine{
-		MarginfiAccount:       account,
+		Account:               account,
 		BankAccountsWithPrice: bankAccountsWithPrice,
 	}, nil
 }
@@ -36,7 +36,7 @@ func (r *RiskEngine) CheckAccountInitHealth(ctx context.Context, bankAccountServ
 		return nil
 	}
 
-	noFlashloanCheck, err := NewRiskEngineNoFlashloanCheck(ctx, bankAccountService, r.MarginfiAccount, bankAccounts, priceFeedMgr)
+	noFlashloanCheck, err := NewRiskEngineNoFlashloanCheck(ctx, bankAccountService, r.Account, bankAccounts, priceFeedMgr)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (r *RiskEngine) CheckAccountHealth(requirementType RequirementType) error {
 }
 
 func (r *RiskEngine) CheckPreLiquidationConditionAndGetAccountHealth(bankId uuid.UUID) (decimal.Decimal, error) {
-	if r.MarginfiAccount.GetFlag(InFlashloanFlag) {
+	if r.Account.GetFlag(InFlashloanFlag) {
 		return decimal.Zero, AccountInFlashloan
 	}
 	var liabilityBankBalance *BankAccountWithPriceFeed
@@ -128,7 +128,7 @@ This check is based on the assumption that liquidation always reduces risk.
 2. We ensure that the account remains at or below the maintenance requirement level. This ensures that the overall liquidation is not excessive.
 */
 func (r *RiskEngine) CheckPostLiquidationConditionAndGetAccountHealth(bankId uuid.UUID, preLiquidationHealth decimal.Decimal) (decimal.Decimal, error) {
-	if r.MarginfiAccount.GetFlag(InFlashloanFlag) {
+	if r.Account.GetFlag(InFlashloanFlag) {
 		return decimal.Zero, AccountInFlashloan
 	}
 
@@ -166,7 +166,7 @@ func (r *RiskEngine) CheckPostLiquidationConditionAndGetAccountHealth(bankId uui
 }
 
 func (r *RiskEngine) CheckAccountBankrupt(log Log) error {
-	if r.MarginfiAccount.GetFlag(InFlashloanFlag) {
+	if r.Account.GetFlag(InFlashloanFlag) {
 		return AccountInFlashloan
 	}
 
