@@ -97,7 +97,6 @@ func ComputeLiquidationPriceForBank(bankAccountService BankAccountService, banks
 		liquidationPrice = assets.Sub(liabilities).Div(denominator).Sub(priceConfidence)
 	}
 	if liquidationPrice.IsZero() || liquidationPrice.LessThan(decimal.Zero) {
-		// 如果清算价格为负数或零，表示position非常健康，实际上不会被清算
 		return decimal.Zero, nil
 	}
 	return liquidationPrice, nil
@@ -167,18 +166,16 @@ func CalcAmount(value decimal.Decimal, price decimal.Decimal) (decimal.Decimal, 
 }
 
 // calculate_pre_fee_spl_deposit_amount
-// 计算 deposit 之前的金额
 func CalculatePreFeeSplDepositAmount(amount decimal.Decimal) (decimal.Decimal, error) {
 	return amount, nil
 }
 
 // calculate_post_fee_spl_deposit_amount
-// 计算 deposit 之后的金额
 func CalculatePostFeeSplDepositAmount(amount decimal.Decimal) (decimal.Decimal, error) {
 	return amount, nil
 }
 
-// ComputeNetApy 计算净 APY
+// ComputeNetApy 
 func ComputeNetApy(bankAccountService BankAccountService, priceFeedMgr PriceAdapterMgr, accountId uuid.UUID) (decimal.Decimal, error) {
 	ctx := context.Background()
 	account, err := bankAccountService.GetAccountById(ctx, accountId)
